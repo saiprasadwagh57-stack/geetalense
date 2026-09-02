@@ -1,0 +1,245 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,400&family=Inter:wght@300;400;500;600&family=Space+Grotesk:wght@300;400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-serif: "Cormorant Garamond", serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", sans-serif;
+}
+
+:root {
+  --color-bg: #050505;
+  --color-accent: #d4af37;
+  --glass-surface: rgba(255, 255, 255, 0.02);
+  --glass-border: rgba(212, 175, 55, 0.1);
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  color: #fff;
+  background-color: var(--color-bg);
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+}
+
+/* Cinematic Atmospheric Immersion */
+.atmosphere {
+  position: fixed;
+  inset: -50%;
+  width: 200%;
+  height: 200%;
+  background: 
+    radial-gradient(circle at 50% 50%, #0a0a1a 0%, transparent 60%),
+    radial-gradient(circle at 20% 80%, #050b2b 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, #1a0a0a 0%, transparent 50%);
+  filter: blur(120px);
+  opacity: 0.8;
+  z-index: -2;
+  animation: drift 60s infinite alternate cubic-bezier(0.45, 0.05, 0.55, 0.95);
+}
+
+/* Sublte Fog/Mist layer */
+.fog {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.02) 50%, transparent);
+  pointer-events: none;
+  z-index: -1;
+  animation: fogDrift 20s infinite alternate ease-in-out;
+  mask-image: radial-gradient(circle at center, black, transparent 80%);
+}
+
+@keyframes fogDrift {
+  from { transform: translateX(-5%) translateY(-2%); opacity: 0.3; }
+  to { transform: translateX(5%) translateY(2%); opacity: 0.6; }
+}
+
+@keyframes drift {
+  from { transform: rotate(0deg) scale(1); }
+  to { transform: rotate(5deg) scale(1.05); }
+}
+
+/* Floating Particles (CSS only fallback or overlay) */
+.divine-energy {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background-image: radial-gradient(circle at 50% 50%, white .5px, transparent 1px);
+  background-size: 100px 100px;
+  opacity: 0.1;
+  mask-image: radial-gradient(circle at center, black, transparent 70%);
+  animation: particles 120s linear infinite;
+}
+
+@keyframes particles {
+  from { transform: translateY(0) rotate(0deg); }
+  to { transform: translateY(-1000px) rotate(360deg); }
+}
+
+/* Sequential Reveal Utility */
+.reveal-1 { animation: cinematicReveal 1.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.reveal-2 { animation: cinematicReveal 1.5s cubic-bezier(0.16, 1, 0.3, 1) 0.8s forwards; opacity: 0; }
+.reveal-3 { animation: cinematicReveal 1.5s cubic-bezier(0.16, 1, 0.3, 1) 1.6s forwards; opacity: 0; }
+.reveal-4 { animation: cinematicReveal 1.5s cubic-bezier(0.16, 1, 0.3, 1) 2.4s forwards; opacity: 0; }
+
+@keyframes cinematicReveal {
+  from { opacity: 0; transform: translateY(30px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* GPU Acceleration for smooth animations */
+.gpu-accel {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000;
+}
+
+/* Glassmorphism Refined - "Floating" effect */
+.glass {
+  background: rgba(255, 255, 255, 0.01);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 1px solid rgba(212, 175, 55, 0.03);
+  box-shadow: 0 40px 100px -20px rgba(0, 0, 0, 0.8);
+  transform: translateZ(0); /* Hardware acceleration */
+}
+
+.breathe {
+  animation: breathe 10s infinite ease-in-out;
+}
+
+@keyframes breathe {
+  0%, 100% { transform: scale(1); box-shadow: 0 40px 150px rgba(0,0,0,0.8), 0 0 20px rgba(212, 175, 55, 0.02); }
+  50% { transform: scale(1.02); box-shadow: 0 40px 180px rgba(0,0,0,0.9), 0 0 60px rgba(212, 175, 55, 0.1); }
+}
+
+/* Typography Accents */
+.shloka-title {
+  background: linear-gradient(to bottom, #ffffff 0%, #d4af37 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 40px rgba(212, 175, 55, 0.3);
+  letter-spacing: 0.05em;
+}
+
+/* Divine Glow Pulse */
+.glow-pulse {
+  position: relative;
+}
+.glow-pulse::after {
+  content: "";
+  position: absolute;
+  inset: -10px;
+  background: radial-gradient(circle at center, rgba(212, 175, 55, 0.1), transparent 70%);
+  opacity: 0;
+  transition: opacity 1s ease;
+  pointer-events: none;
+}
+.glow-pulse:hover::after {
+  opacity: 1;
+}
+
+/* Cinematic Loading State */
+.seeking-text {
+  letter-spacing: 0.5em;
+  font-weight: 300;
+  animation: textBreathe 4s infinite ease-in-out;
+}
+
+@keyframes textBreathe {
+  0%, 100% { opacity: 0.3; transform: scale(0.98); letter-spacing: 0.5em; }
+  50% { opacity: 0.8; transform: scale(1); letter-spacing: 0.6em; }
+}
+
+/* Silhouette Pulse */
+.silhouette {
+  mask-image: url('https://picsum.photos/seed/meditation/400/400'); /* Placeholder mask */
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  background: #d4af37;
+  width: 100px;
+  height: 100px;
+  animation: silhouettePulse 4s infinite ease-in-out;
+}
+
+@keyframes silhouettePulse {
+  0%, 100% { opacity: 0.1; transform: scale(0.9); filter: blur(5px); }
+  50% { opacity: 0.4; transform: scale(1.1); filter: blur(0px); }
+}
+
+.history-item {
+  background: rgba(255, 255, 255, 0.01);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.history-item:hover {
+  background: rgba(212, 175, 55, 0.05);
+  border-color: rgba(212, 175, 55, 0.2);
+  transform: translateX(8px);
+}
+
+/* Global Fluid Container */
+.main-container {
+  width: 90%;
+  max-width: 1200px;
+  margin: auto;
+}
+
+/* Responsive Typography */
+html {
+  font-size: 14px;
+}
+
+@media (min-width: 768px) {
+  html {
+    font-size: 16px;
+  }
+}
+
+@media (min-width: 1024px) {
+  html {
+    font-size: 18px;
+  }
+}
+
+/* Custom Scrollbar for non-hidden areas */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(212, 175, 55, 0.1);
+  border-radius: 999px;
+}
+
+/* Navigation Labels */
+.label-micro {
+  font-weight: 700;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 5px;
+  color: rgba(212, 175, 55, 0.6);
+  font-family: var(--font-display);
+}
+
+/* Utility - No Scrollbar */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Italic Glow Effect */
+.italic-glow {
+  text-shadow: 0 0 20px rgba(212, 175, 55, 0.4);
+  font-style: italic;
+}

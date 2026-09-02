@@ -1,0 +1,59 @@
+{
+  "entities": {
+    "UserStats": {
+      "title": "User Statistics",
+      "description": "Tracking user usage and sessions",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "lastSeen": { "type": "string", "format": "date-time" },
+        "visitCount": { "type": "number" },
+        "displayName": { "type": "string" }
+      },
+      "required": ["lastSeen", "visitCount"]
+    },
+    "Feedback": {
+      "title": "User Feedback",
+      "description": "Log of user feedback on spiritual guidance",
+      "type": "object",
+      "properties": {
+        "shlokaReference": {
+          "type": "string",
+          "description": "The reference of the shloka guidance they are rating"
+        },
+        "query": {
+          "type": "string",
+          "description": "The user's original query"
+        },
+        "rating": {
+          "type": "number",
+          "description": "Relevance rating (1-5)"
+        },
+        "comment": {
+          "type": "string",
+          "description": "Optional user comments or issue report"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the feedback was submitted"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Anonymous or authenticated user ID"
+        }
+      },
+      "required": ["shlokaReference", "rating", "timestamp"]
+    }
+  },
+  "firestore": {
+    "feedback": {
+      "schema": "Feedback",
+      "description": "User feedback collection"
+    },
+    "users": {
+      "schema": "UserStats",
+      "description": "User usage tracking"
+    }
+  }
+}

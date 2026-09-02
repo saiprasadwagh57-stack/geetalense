@@ -1,0 +1,6 @@
+{
+  "name": "GitaLens: Ancient Wisdom Engine",
+  "description": "An interactive spiritual guide inspired by the Bhagavad Gita, offering practical guidance for modern problems through shlokas, meanings, and examples.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
