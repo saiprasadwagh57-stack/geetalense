@@ -6,6 +6,7 @@
       "type": "object",
       "properties": {
         "email": { "type": "string" },
+        "phone": { "type": "string" },
         "lastSeen": { "type": "string", "format": "date-time" },
         "visitCount": { "type": "number" },
         "displayName": { "type": "string" }

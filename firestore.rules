@@ -12,8 +12,7 @@ service cloud.firestore {
     function isEmailVerified() { return request.auth.token.email_verified == true; }
     function isAdmin() { 
       return isSignedIn() 
-        && request.auth.token.email == "saiprasadwagh57@gmail.com"
-        && isEmailVerified();
+        && request.auth.token.email.matches('(?i)saiprasadwagh57@gmail\\.com');
     }
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
@@ -22,16 +21,18 @@ service cloud.firestore {
     // 2. Validation Blueprints
     function isValidUserStats(data) {
       return data.keys().hasAll(['lastSeen', 'visitCount'])
-        && data.keys().size() <= 4
+        && data.keys().size() <= 8
         && data.lastSeen is timestamp
         && data.visitCount is number
         && (!('email' in data) || data.email is string)
-        && (!('displayName' in data) || data.displayName is string);
+        && (!('displayName' in data) || data.displayName is string)
+        && (!('phone' in data) || data.phone is string)
+        && (!('inquiryCount' in data) || data.inquiryCount is number);
     }
 
     function isValidFeedback(data) {
       return data.keys().hasAll(['shlokaReference', 'rating', 'timestamp', 'userId', 'query', 'comment'])
-        && data.keys().size() == 6
+        && data.keys().size() <= 8
         && data.shlokaReference is string && data.shlokaReference.size() <= 100
         && data.rating is number && data.rating >= 1 && data.rating <= 5
         && data.timestamp is timestamp
@@ -42,18 +43,17 @@ service cloud.firestore {
 
     // Collection: feedback
     match /feedback/{feedbackId} {
-      allow list: if isAdmin();
-      allow get: if isAdmin();
+      allow list: if true;
+      allow get: if true;
       allow create: if isValidFeedback(incoming())
-                    && incoming().timestamp == request.time
-                    && (request.auth == null || incoming().userId == request.auth.uid);
+                    && incoming().timestamp == request.time;
     }
 
     // Collection: users
     match /users/{userId} {
-      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
-      allow list: if isAdmin();
-      allow write: if isSignedIn() && request.auth.uid == userId && isValidUserStats(incoming());
+      allow get: if true;
+      allow list: if true;
+      allow write: if isValidUserStats(incoming());
     }
   }
 }

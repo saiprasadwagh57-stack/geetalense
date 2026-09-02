@@ -1,19 +1,53 @@
 import { motion, AnimatePresence } from "motion/react";
-import { Quote, Lightbulb, MapPin, Share2, X, Download, Star, MessageSquareCode, CheckCircle2 } from "lucide-react";
+import { 
+  Quote, 
+  Lightbulb, 
+  MapPin, 
+  Share2, 
+  X, 
+  Download, 
+  Star, 
+  MessageSquareCode, 
+  CheckCircle2, 
+  Layers, 
+  Feather, 
+  ShieldCheck, 
+  Sparkles,
+  HelpCircle,
+  AlertTriangle,
+  PhoneCall,
+  Volume2,
+  Copy,
+  Check
+} from "lucide-react";
 import { Shloka } from "../data/shlokas";
 import { AIGuidance } from "../services/aiService";
+import { VerseKnowledgeEntry } from "../types/gitaKnowledge";
+import { GITA_KNOWLEDGE_GRAPH } from "../data/knowledgeGraph";
 import { useState } from "react";
 import { submitFeedback } from "../services/firebaseService";
+import { MultiSourceComparator } from "./MultiSourceComparator";
 
 interface WisdomCardProps {
   shloka: Shloka | AIGuidance | any;
   language?: "en" | "mr";
   userQuery?: string;
+  onOpenKnowledgeExplorer?: () => void;
+  onOpenCommentaries?: (verseId?: string) => void;
 }
 
-export default function WisdomCard({ shloka, language = "en", userQuery = "" }: WisdomCardProps) {
+export default function WisdomCard({ 
+  shloka, 
+  language = "en", 
+  userQuery = "",
+  onOpenKnowledgeExplorer,
+  onOpenCommentaries
+}: WisdomCardProps) {
   const isMR = language === "mr";
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showComparator, setShowComparator] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -22,6 +56,40 @@ export default function WisdomCard({ shloka, language = "en", userQuery = "" }: 
   const meaning = shloka.meaning || (isMR ? shloka.meaning_mr : shloka.meaning_en);
   const guidance = shloka.guidance || (isMR ? shloka.guidance_mr : shloka.guidance_en);
   const example = shloka.example;
+
+  // Extract structured knowledge verse entry if available or match by reference
+  const knowledgeVerse: VerseKnowledgeEntry | undefined = shloka.knowledgeVerse || GITA_KNOWLEDGE_GRAPH.find(v => 
+    shloka.reference && (
+      shloka.reference.includes(`${v.chapter_number}`) && 
+      shloka.reference.includes(`${v.verse_number}`)
+    )
+  ) || GITA_KNOWLEDGE_GRAPH[0];
+
+  const handleSpeech = () => {
+    if (!('speechSynthesis' in window)) return;
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const textToSpeak = `${shloka.shloka}. ${meaning}`;
+    const utterance = new SpeechSynthesisUtterance(textToSpeak);
+    utterance.rate = 0.88;
+    utterance.lang = isMR ? 'mr-IN' : 'en-IN';
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+    setIsSpeaking(true);
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const handleCopy = () => {
+    const text = `${shloka.reference}\n${shloka.shloka}\n\n${meaning}\n\nVia GitaLens`;
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }).catch(console.error);
+  };
 
   const handleFeedback = async () => {
     if (rating === 0) return;
@@ -44,7 +112,7 @@ export default function WisdomCard({ shloka, language = "en", userQuery = "" }: 
   const handleShare = () => {
     if (navigator.share) {
       navigator.share({
-        title: 'GitaLens Wisdom',
+        title: 'GitaLens Sacred Wisdom',
         text: `${shloka.reference}: ${shloka.shloka}\n\n${meaning}`,
         url: window.location.href,
       }).catch(console.error);
@@ -61,55 +129,43 @@ export default function WisdomCard({ shloka, language = "en", userQuery = "" }: 
     if (!ctx) return;
 
     const grad = ctx.createLinearGradient(0, 0, 1080, 1080);
-    grad.addColorStop(0, "#0c0c0c");
-    grad.addColorStop(1, "#1a2a6c");
+    grad.addColorStop(0, "#0a0a0c");
+    grad.addColorStop(1, "#1c1917");
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 1080, 1080);
 
-    ctx.globalAlpha = 0.05;
-    ctx.fillStyle = "#fff";
-    for(let i=0; i<1080; i+=20) {
-      for(let j=0; j<1080; j+=20) {
-        ctx.beginPath();
-        ctx.arc(i, j, 1, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-    ctx.globalAlpha = 1;
-
     ctx.fillStyle = "#d4af37";
-    ctx.font = "bold 24px Inter";
+    ctx.font = "bold 26px sans-serif";
     ctx.textAlign = "center";
-    ctx.letterSpacing = "10px";
-    ctx.fillText("GITALENS", 540, 100);
+    ctx.fillText("GITALENS • SHRIMAD BHAGAVAD GITA", 540, 120);
 
-    ctx.fillStyle = "#f2e6d0";
-    ctx.font = "48px 'Cormorant Garamond'";
-    const words = shloka.shloka.split(" ");
+    ctx.fillStyle = "#fef0c7";
+    ctx.font = "40px serif";
+    const words = (shloka.shloka || "").split(" ");
     let line = "";
-    let y = 300;
+    let y = 320;
     for(let n = 0; n < words.length; n++) {
       let testLine = line + words[n] + " ";
       let metrics = ctx.measureText(testLine);
-      if(metrics.width > 800 && n > 0) {
+      if(metrics.width > 850 && n > 0) {
         ctx.fillText(line, 540, y);
         line = words[n] + " ";
-        y += 60;
+        y += 55;
       } else {
         line = testLine;
       }
     }
     ctx.fillText(line, 540, y);
 
-    ctx.fillStyle = "rgba(255,255,255,0.6)";
-    ctx.font = "italic 32px 'Cormorant Garamond'";
-    const mWords = meaning.split(" ");
+    ctx.fillStyle = "rgba(255,255,255,0.75)";
+    ctx.font = "italic 28px serif";
+    const mWords = (meaning || "").split(" ");
     line = "";
     y += 100;
     for(let n = 0; n < mWords.length; n++) {
       let testLine = line + mWords[n] + " ";
       let metrics = ctx.measureText(testLine);
-      if(metrics.width > 800 && n > 0) {
+      if(metrics.width > 850 && n > 0) {
         ctx.fillText(line, 540, y);
         line = mWords[n] + " ";
         y += 45;
@@ -120,8 +176,8 @@ export default function WisdomCard({ shloka, language = "en", userQuery = "" }: 
     ctx.fillText(line, 540, y);
 
     ctx.fillStyle = "#d4af37";
-    ctx.font = "bold 20px Inter";
-    ctx.fillText(shloka.reference.toUpperCase(), 540, 950);
+    ctx.font = "bold 24px sans-serif";
+    ctx.fillText((shloka.reference || "").toUpperCase(), 540, 960);
 
     const link = document.createElement("a");
     link.download = `GitaLens-${shloka.reference}.png`;
@@ -130,208 +186,300 @@ export default function WisdomCard({ shloka, language = "en", userQuery = "" }: 
   };
 
   return (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key={`${shloka.id || shloka.reference}-${language}`}
-        initial={{ opacity: 0, y: 100 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -100 }}
-        transition={{ duration: 2, ease: [0.16, 1, 0.3, 1] }}
-        className="w-full max-w-5xl mx-auto px-4 gpu-accel"
-      >
-        <div className="relative group">
-          {/* Subtle Divine Glow - Floating Element */}
-          <div className="absolute inset-0 bg-radial-gradient from-[#d4af37]/5 to-transparent blur-3xl opacity-50" />
-          
-          <div className="glass breathe rounded-[40px] md:rounded-[80px] p-8 md:p-24 text-center overflow-hidden relative">
-            {/* Cinematic Background Image Overlay if exists */}
-            {shloka.imageUrl && (
-              <div className="absolute inset-0 z-0">
-                <img 
-                  src={shloka.imageUrl} 
-                  alt="" 
-                  className="w-full h-full object-cover opacity-10 md:opacity-20 scale-110 blur-2xl transition-opacity duration-1000" 
-                />
-                <div className="absolute inset-0 bg-gradient-to-b from-black via-transparent to-black" />
-              </div>
-            )}
-
-            <div className="relative z-10 space-y-16 md:y-24">
-              {/* 1. Shloka Reveal */}
-              <motion.section 
-                initial={{ opacity: 0, scale: 0.98, y: 30 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                transition={{ type: "spring", stiffness: 40, damping: 20 }}
-                className="space-y-8"
-              >
-                <div className="flex flex-col items-center gap-4">
-                  <span className="label-micro !tracking-[0.6em]">{shloka.reference}</span>
-                  <div className="w-8 h-[1px] bg-gradient-to-r from-transparent via-[#d4af37]/30 to-transparent" />
-                </div>
-                
-                <h2 className="shloka-title text-[28px] md:text-[56px] font-serif leading-tight italic px-2">
-                  {shloka.shloka}
-                </h2>
-              </motion.section>
-
-              {/* 2. Meaning Reveal */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4, type: "spring", stiffness: 40, damping: 20 }}
-                className="max-w-2xl mx-auto space-y-4"
-              >
-                <div className="label-micro !text-white/10 !tracking-[0.4em] text-[8px]">The Eternal Insight</div>
-                <p className="text-xl md:text-2xl font-serif text-white/70 leading-relaxed italic">
-                  "{meaning}"
-                </p>
-              </motion.div>
-
-              {/* 3. Guidance & Example Reveal */}
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.8, type: "spring", stiffness: 40, damping: 20 }}
-                className="grid grid-cols-1 md:grid-cols-2 gap-12 lg:gap-24 pt-12 border-t border-white/5"
-              >
-                <div className="space-y-4 text-center md:text-left">
-                  <div className="label-micro !text-[#d4af37]/30 flex items-center justify-center md:justify-start gap-2 text-[8px]">
-                    <MapPin size={10} />
-                    The Soul's Path
+    <>
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={`wisdom-card-${shloka.id || shloka.reference || 'verse'}-${language}`}
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -30 }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          className="w-full max-w-5xl mx-auto px-2 sm:px-4"
+        >
+          <div className="relative group">
+            
+            <div className="glass rounded-[32px] sm:rounded-[44px] p-6 sm:p-10 md:p-14 text-center overflow-hidden relative border border-[var(--app-border)]">
+              
+              {/* Crisis Safety Notification if triggered */}
+              {shloka.isCrisis && (
+                <div className="mb-8 p-6 rounded-2xl bg-rose-950/40 border border-rose-500/40 text-left space-y-4">
+                  <div className="flex items-center gap-3 text-rose-300 font-semibold text-sm">
+                    <AlertTriangle className="w-5 h-5 text-rose-400" />
+                    <span>{isMR ? 'आपत्कालीन मानसिक आधार' : 'Support & Emergency Care'}</span>
                   </div>
-                  <p className="text-sm font-light text-white/40 leading-relaxed">
-                    {guidance}
+                  <p className="text-xs sm:text-sm text-rose-100/90 leading-relaxed">
+                    {shloka.safetyMessage}
+                  </p>
+                  {shloka.helplines && (
+                    <div className="pt-2 border-t border-rose-500/20 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {shloka.helplines.map((hl: any, idx: number) => (
+                        <div key={`helpline-${shloka.id || 'hl'}-${idx}-${hl.name}`} className="p-2.5 rounded-lg bg-black/40 flex items-center gap-2 text-xs text-rose-200">
+                          <PhoneCall className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                          <span><strong>{hl.name}:</strong> {hl.contact}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="relative z-10 space-y-8 md:space-y-10">
+                
+                {/* 1. Shloka Reference, Audio Recitation & Controls */}
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+                    <span className="label-micro bg-[var(--app-accent-bg)] px-3.5 py-1.5 rounded-full border border-[var(--app-border)]">
+                      {shloka.reference}
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-emerald-500 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20 font-medium">
+                      <ShieldCheck className="w-3 h-3" />
+                      {isMR ? 'प्रमाणित श्लोक' : 'Verified Canonical'}
+                    </span>
+                    
+                    {/* Audio Recitation */}
+                    <button
+                      onClick={handleSpeech}
+                      className={`px-3 py-1 rounded-full text-xs font-medium border transition-all flex items-center gap-1.5 ${
+                        isSpeaking
+                          ? 'bg-[#d4af37] text-black border-[#d4af37] animate-pulse font-bold'
+                          : 'bg-white/[0.04] text-[var(--app-accent)] border-[var(--app-border)] hover:bg-[#d4af37]/20'
+                      }`}
+                      title="Audio Recitation"
+                    >
+                      <Volume2 className="w-3.5 h-3.5" />
+                      <span>{isSpeaking ? (isMR ? 'थांबवा' : 'Playing...') : (isMR ? 'श्लोक ऐका' : 'Listen')}</span>
+                    </button>
+
+                    {/* Copy Text */}
+                    <button
+                      onClick={handleCopy}
+                      className="p-1.5 rounded-full bg-white/[0.04] hover:bg-white/10 text-[var(--app-text-muted)] hover:text-[var(--app-text)] border border-[var(--app-border)] transition-all"
+                      title="Copy Shloka"
+                    >
+                      {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                  
+                  <h2 className="shloka-title text-xl sm:text-3xl md:text-4xl font-serif leading-relaxed italic px-2">
+                    {shloka.shloka}
+                  </h2>
+                </div>
+
+                {/* 2. Meaning Reveal */}
+                <div className="max-w-3xl mx-auto space-y-2.5">
+                  <div className="label-micro !text-[var(--app-accent)] text-[9px] uppercase tracking-[3px]">
+                    {isMR ? 'शाश्वत बोध (The Eternal Insight)' : 'The Eternal Insight'}
+                  </div>
+                  <p className="text-base sm:text-lg md:text-xl font-serif text-[var(--app-text)] leading-relaxed italic">
+                    "{meaning}"
                   </p>
                 </div>
 
-                <div className="space-y-4 text-center md:text-left">
-                  <div className="label-micro !text-[#d4af37]/30 flex items-center justify-center md:justify-start gap-2 text-[8px]">
-                    <Lightbulb size={10} />
-                    Material Wisdom
-                  </div>
-                  <p className="text-sm font-light text-white/40 leading-relaxed">
-                    {example}
-                  </p>
+                {/* 3. Multi-Source Commentary & Padaccheda Buttons */}
+                <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                  <button
+                    onClick={() => {
+                      if (onOpenCommentaries) {
+                        onOpenCommentaries(knowledgeVerse?.verse_id);
+                      } else {
+                        setShowComparator(true);
+                      }
+                    }}
+                    className="px-5 py-2.5 rounded-full bg-[#d4af37] text-black hover:brightness-110 font-semibold text-xs tracking-wider transition-all flex items-center gap-2 shadow-md active:scale-95"
+                  >
+                    <Layers className="w-4 h-4" />
+                    <span>{isMR ? '२० भाष्यकारांची तुलना पहा' : 'Compare 20 Commentators & Sources'}</span>
+                  </button>
+
+                  <button
+                    onClick={() => setShowComparator(true)}
+                    className="px-4 py-2.5 rounded-full bg-white/[0.03] hover:bg-white/10 text-[var(--app-text)] border border-[var(--app-border)] text-xs font-medium tracking-wider transition-all flex items-center gap-2"
+                  >
+                    <Feather className="w-3.5 h-3.5 text-[var(--app-accent)]" />
+                    <span>{isMR ? 'पदच्छेद व शब्दार्थ' : 'Sanskrit Padaccheda'}</span>
+                  </button>
                 </div>
-              </motion.div>
 
-              {/* Enhanced Action Row - Mobile Focused */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 2.4 }}
-                className="flex items-center justify-center gap-10"
-              >
-                <button onClick={handleShare} className="p-6 rounded-full glass text-white/20 hover:text-[#d4af37] transition-all">
-                  <Share2 size={20} />
-                </button>
-                
-                <button onClick={downloadCard} className="p-6 rounded-full glass text-white/20 hover:text-[#d4af37] transition-all">
-                  <Download size={20} />
-                </button>
-              </motion.div>
+                {/* 4. Guidance & Real Life Example */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 pt-6 border-t border-[var(--app-border)]">
+                  <div className="space-y-2.5 text-left p-5 rounded-2xl bg-white/[0.02] border border-[var(--app-border)]">
+                    <div className="label-micro !text-[var(--app-accent)] flex items-center gap-2 text-[9px]">
+                      <MapPin size={12} />
+                      <span>{isMR ? 'आत्मिक मार्गदर्शन (The Soul\'s Path)' : 'The Soul\'s Path'}</span>
+                    </div>
+                    <p className="text-xs sm:text-sm text-[var(--app-text-muted)] leading-relaxed">
+                      {guidance}
+                    </p>
+                  </div>
 
-              {/* 4. Feedback Section */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 3 }}
-                className="pt-12 border-t border-white/5 space-y-8"
-              >
-                {!feedbackSubmitted ? (
-                  <div className="max-w-md mx-auto space-y-6">
-                    <div className="space-y-4">
-                      <div className="label-micro !text-white/20 tracking-[4px]">How relevant is this guidance?</div>
-                      <div className="flex justify-center gap-4">
+                  <div className="space-y-2.5 text-left p-5 rounded-2xl bg-white/[0.02] border border-[var(--app-border)]">
+                    <div className="label-micro !text-[var(--app-accent)] flex items-center gap-2 text-[9px]">
+                      <Lightbulb size={12} />
+                      <span>{isMR ? 'प्रत्यक्ष जीवनातील उदाहरण' : 'Material Wisdom & Example'}</span>
+                    </div>
+                    <p className="text-xs sm:text-sm text-[var(--app-text-muted)] leading-relaxed">
+                      {example}
+                    </p>
+                  </div>
+                </div>
+
+                {/* 5. Practical Action Steps & Reflection */}
+                {knowledgeVerse && (
+                  <div className="pt-2 text-left grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                    
+                    {/* Practical Actions */}
+                    <div className="p-5 rounded-2xl bg-[var(--app-accent-bg)] border border-[var(--app-border)] space-y-3">
+                      <p className="text-xs font-serif font-bold text-[var(--app-accent)] flex items-center gap-1.5 uppercase tracking-wider">
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>{isMR ? 'कृती आराखडा (Practical Action Steps)' : 'Practical Action Checklist'}</span>
+                      </p>
+                      <ul className="space-y-2">
+                        {(isMR ? knowledgeVerse.application.practical_actions_mr : knowledgeVerse.application.practical_actions_en).map((act, i) => (
+                          <li key={`action-${knowledgeVerse.verse_id}-${i}`} className="text-xs text-[var(--app-text)] flex items-start gap-2">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-[var(--app-accent)] shrink-0 mt-0.5" />
+                            <span>{act}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    {/* Soul Reflection Question */}
+                    <div className="p-5 rounded-2xl bg-white/[0.02] border border-[var(--app-border)] space-y-3">
+                      <p className="text-xs font-serif font-bold text-[var(--app-text-muted)] flex items-center gap-1.5 uppercase tracking-wider">
+                        <HelpCircle className="w-3.5 h-3.5 text-[var(--app-accent)]" />
+                        <span>{isMR ? 'आत्मपरीक्षण प्रश्न' : 'Soul Reflection Prompt'}</span>
+                      </p>
+                      <p className="text-xs sm:text-sm italic text-[var(--app-accent)] leading-relaxed font-serif">
+                        "{isMR ? knowledgeVerse.application.reflection_question_mr : knowledgeVerse.application.reflection_question_en}"
+                      </p>
+                    </div>
+
+                  </div>
+                )}
+
+                {/* Action Row: Share & Download Card */}
+                <div className="flex items-center justify-center gap-4 pt-2">
+                  <button 
+                    onClick={handleShare} 
+                    className="px-5 py-2.5 rounded-full bg-white/[0.04] text-[var(--app-text)] hover:text-[var(--app-accent)] border border-[var(--app-border)] hover:border-[var(--app-border-hover)] transition-all flex items-center gap-2 text-xs font-medium"
+                  >
+                    <Share2 size={15} />
+                    <span>{isMR ? 'शेअर करा' : 'Share'}</span>
+                  </button>
+                  
+                  <button 
+                    onClick={downloadCard} 
+                    className="px-5 py-2.5 rounded-full bg-white/[0.04] text-[var(--app-text)] hover:text-[var(--app-accent)] border border-[var(--app-border)] hover:border-[var(--app-border-hover)] transition-all flex items-center gap-2 text-xs font-medium"
+                  >
+                    <Download size={15} />
+                    <span>{isMR ? 'कार्ड डाउनलोड' : 'Save Card Image'}</span>
+                  </button>
+                </div>
+
+                {/* Feedback Section */}
+                <div className="pt-6 border-t border-[var(--app-border)] space-y-4">
+                  {!feedbackSubmitted ? (
+                    <div className="max-w-md mx-auto space-y-3">
+                      <div className="label-micro !text-[var(--app-text-subtle)] tracking-[2px]">
+                        {isMR ? 'हे मार्गदर्शन किती समर्पक वाटले?' : 'How relevant was this spiritual guidance?'}
+                      </div>
+                      <div className="flex justify-center gap-2.5">
                         {[1, 2, 3, 4, 5].map((star) => (
                           <button
-                            key={star}
+                            key={`star-rating-btn-${star}`}
                             onClick={() => setRating(star)}
-                            className={`transition-all duration-300 hover:scale-125 ${rating >= star ? "text-[#d4af37]" : "text-white/5"}`}
+                            className={`transition-all duration-200 hover:scale-125 ${rating >= star ? "text-[#d4af37]" : "text-white/20"}`}
                           >
-                            <Star size={24} fill={rating >= star ? "currentColor" : "none"} />
+                            <Star size={20} fill={rating >= star ? "currentColor" : "none"} />
                           </button>
                         ))}
                       </div>
-                    </div>
 
-                    {rating > 0 && (
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="space-y-6"
-                      >
-                        <div className="relative">
-                          <textarea
-                            value={comment}
-                            onChange={(e) => setComment(e.target.value)}
-                            placeholder="Report an issue or suggest improvement..."
-                            className="w-full bg-white/[0.03] border border-white/10 rounded-2xl p-4 text-sm text-white placeholder:text-white/10 focus:outline-none focus:border-[#d4af37]/40 transition-all resize-none h-24"
-                          />
-                          <MessageSquareCode className="absolute bottom-4 right-4 text-white/5" size={16} />
+                      {rating > 0 && (
+                        <div className="space-y-3 pt-2">
+                          <div className="relative">
+                            <textarea
+                              value={comment}
+                              onChange={(e) => setComment(e.target.value)}
+                              placeholder={isMR ? "काही अभिप्राय असल्यास लिहा..." : "Share your thoughts or suggest refinements..."}
+                              className="w-full bg-white/[0.03] border border-[var(--app-border)] rounded-2xl p-3 text-xs text-[var(--app-text)] placeholder:text-[var(--app-text-subtle)] focus:outline-none focus:border-[#d4af37] transition-all resize-none h-18"
+                            />
+                            <MessageSquareCode className="absolute bottom-2.5 right-3 text-[var(--app-text-subtle)]" size={14} />
+                          </div>
+                          <button
+                            onClick={handleFeedback}
+                            disabled={isSubmitting}
+                            className="w-full py-2.5 bg-[#d4af37] text-black rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 active:scale-95 shadow-sm"
+                          >
+                            {isSubmitting ? "Submitting..." : (isMR ? "अभिप्राय नोंदवा" : "Submit Feedback")}
+                          </button>
                         </div>
-                        <button
-                          onClick={handleFeedback}
-                          disabled={isSubmitting}
-                          className="w-full py-4 bg-white/[0.03] border border-white/10 hover:border-[#d4af37]/40 text-white/40 hover:text-[#d4af37] rounded-full text-[10px] font-bold uppercase tracking-[4px] transition-all flex items-center justify-center gap-3 active:scale-95"
-                        >
-                          {isSubmitting ? "Sending..." : "Submit Response"}
-                        </button>
-                      </motion.div>
-                    )}
-                  </div>
-                ) : (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="flex flex-col items-center gap-4 py-8"
-                  >
-                    <div className="p-4 rounded-full bg-[#d4af37]/10 text-[#d4af37]">
-                      <CheckCircle2 size={32} />
+                      )}
                     </div>
-                    <div className="label-micro !text-[#d4af37] !opacity-100">Feedback Logged in Eternity</div>
-                    <p className="text-[10px] text-white/20 uppercase tracking-[2px]">Thank you for helping us refine the guide.</p>
-                  </motion.div>
-                )}
-              </motion.div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-1.5 py-2">
+                      <div className="p-2 rounded-full bg-[#d4af37]/15 text-[#d4af37]">
+                        <CheckCircle2 size={20} />
+                      </div>
+                      <div className="label-micro !text-[var(--app-accent)]">Feedback Logged</div>
+                      <p className="text-xs text-[var(--app-text-muted)]">{isMR ? 'तुमचा अभिप्राय यशस्वीरीत्या नोंदवला गेला आहे.' : 'Thank you for helping us refine the wisdom database.'}</p>
+                    </div>
+                  )}
+                </div>
+
+              </div>
             </div>
           </div>
-        </div>
-        
-        <div className="mt-20 text-center opacity-10 text-[10px] uppercase tracking-[1em] font-light">
-          Boundless • Eternal • One
-        </div>
-      </motion.div>
+        </motion.div>
+      </AnimatePresence>
+
+      {/* Multi-Source Comparison Modal */}
+      {showComparator && knowledgeVerse && (
+        <MultiSourceComparator
+          key={`comparator-${knowledgeVerse.verse_id}`}
+          verse={knowledgeVerse}
+          onClose={() => setShowComparator(false)}
+          language={language}
+        />
+      )}
 
       {/* Share Modal */}
       <AnimatePresence>
         {showShareModal && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-md bg-black/60">
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-[#0c0c0c] border border-white/10 rounded-[40px] p-8 max-w-sm w-full shadow-2xl relative">
-              <button onClick={() => setShowShareModal(false)} className="absolute top-6 right-6 text-white/40 hover:text-white">
-                <X size={20} />
+          <motion.div 
+            key="wisdom-card-share-modal"
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }} 
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 backdrop-blur-md bg-black/70"
+          >
+            <motion.div 
+              key="wisdom-card-share-content"
+              initial={{ scale: 0.95, opacity: 0 }} 
+              animate={{ scale: 1, opacity: 1 }} 
+              exit={{ scale: 0.95, opacity: 0 }} 
+              className="bg-[#0e0e12] border border-[var(--app-border)] rounded-3xl p-6 max-w-sm w-full shadow-2xl relative"
+            >
+              <button onClick={() => setShowShareModal(false)} className="absolute top-4 right-4 text-white/50 hover:text-white">
+                <X size={18} />
               </button>
-              <div className="text-center space-y-6">
-                <div className="label-micro">Wisdom Card</div>
-                <div className="aspect-square bg-gradient-to-br from-[#1a2a6c] to-[#d4af37]/20 rounded-2xl p-6 flex flex-col items-center justify-center text-center space-y-4 border border-white/10 overflow-hidden relative">
-                  <div className="absolute top-0 left-0 w-full h-full opacity-10 bg-[radial-gradient(circle_at_center,_#fff_1px,_transparent_1px)] bg-[size:10px_10px]" />
-                  <Quote className="text-[#d4af37] opacity-20" size={40} />
-                  <p className="text-lg font-serif text-[#f2e6d0] italic leading-relaxed">
-                    "{meaning.length > 150 ? meaning.substring(0, 150) + "..." : meaning}"
-                  </p>
-                  <p className="text-[10px] text-[#d4af37] tracking-widest uppercase">{shloka.reference}</p>
+              <div className="text-center space-y-4">
+                <div className="label-micro">GitaLens Share Card</div>
+                <div className="p-5 rounded-2xl bg-black/40 border border-[var(--app-border)] space-y-2 text-left">
+                  <p className="text-xs font-serif text-[#d4af37] font-semibold">{shloka.reference}</p>
+                  <p className="text-xs font-serif text-white/90 italic">"{meaning}"</p>
                 </div>
-                <div className="flex flex-col gap-3">
-                   <button onClick={downloadCard} className="w-full py-4 bg-[#d4af37] text-black rounded-full font-bold text-xs uppercase tracking-[2px] hover:scale-[1.02] active:scale-[0.98] transition-all">
-                     Download Card
-                   </button>
-                   <p className="text-[10px] text-white/20 uppercase tracking-widest">Share on Social Media</p>
-                </div>
+                <button 
+                  onClick={downloadCard} 
+                  className="w-full py-3 bg-[#d4af37] text-black rounded-full font-bold text-xs uppercase tracking-wider hover:brightness-110 active:scale-95 transition-all"
+                >
+                  {isMR ? 'कार्ड डाउनलोड करा' : 'Download Image Card'}
+                </button>
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
-    </AnimatePresence>
+    </>
   );
 }

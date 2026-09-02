@@ -5,35 +5,69 @@ import firebaseConfig from '../../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
-export const auth = getAuth();
+export const auth = getAuth(app);
 
-export async function trackUserActivity() {
+export interface UserProfileData {
+  uid?: string;
+  displayName?: string;
+  email?: string;
+  phone?: string;
+}
+
+export async function trackUserActivity(customData?: UserProfileData) {
   const user = auth.currentUser;
-  if (!user) return;
+  const uid = customData?.uid || user?.uid || (localStorage.getItem('gitaUserId') || `seeker_${Date.now()}`);
+  
+  if (!localStorage.getItem('gitaUserId')) {
+    localStorage.setItem('gitaUserId', uid);
+  }
 
-  const path = `users/${user.uid}`;
+  const email = customData?.email || user?.email || "";
+  const displayName = customData?.displayName || user?.displayName || "Seeker";
+  const phone = customData?.phone || "";
+
+  // Always save local user log in localStorage cache
   try {
-    const userDoc = await getDoc(doc(db, 'users', user.uid));
-    const email = user.email || "";
-    const displayName = user.displayName || "Seeker";
-
-    if (userDoc.exists()) {
-      await setDoc(doc(db, 'users', user.uid), {
-        email,
-        displayName,
-        lastSeen: serverTimestamp(),
-        visitCount: (userDoc.data().visitCount || 0) + 1
-      }, { merge: true });
+    const rawLocalUsers = localStorage.getItem('gitaLocalSeekers');
+    const localUsers: any[] = rawLocalUsers ? JSON.parse(rawLocalUsers) : [];
+    const existingIdx = localUsers.findIndex(u => u.uid === uid || (email && u.email === email));
+    const updatedUser = {
+      id: uid,
+      uid,
+      displayName,
+      email,
+      phone,
+      lastSeen: new Date().toISOString(),
+      visitCount: existingIdx >= 0 ? (localUsers[existingIdx].visitCount || 1) + 1 : 1
+    };
+    if (existingIdx >= 0) {
+      localUsers[existingIdx] = { ...localUsers[existingIdx], ...updatedUser };
     } else {
-      await setDoc(doc(db, 'users', user.uid), {
-        email,
-        displayName,
-        lastSeen: serverTimestamp(),
-        visitCount: 1
-      });
+      localUsers.unshift(updatedUser);
     }
+    localStorage.setItem('gitaLocalSeekers', JSON.stringify(localUsers));
+  } catch (e) {
+    // ignore
+  }
+
+  const path = `users/${uid}`;
+  try {
+    const userDocRef = doc(db, 'users', uid);
+    const userDoc = await getDoc(userDocRef);
+
+    const docPayload: any = {
+      email,
+      displayName,
+      lastSeen: serverTimestamp(),
+      visitCount: userDoc.exists() ? ((userDoc.data()?.visitCount || 0) + 1) : 1
+    };
+    if (phone) {
+      docPayload.phone = phone;
+    }
+
+    await setDoc(userDocRef, docPayload, { merge: true });
   } catch (error) {
-    console.warn("User activity tracking notice:", error);
+    console.warn("User activity tracking sync note:", error);
   }
 }
 
@@ -42,9 +76,10 @@ export async function getAllFeedback() {
   try {
     const q = query(collection(db, path), orderBy('timestamp', 'desc'));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const remoteData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return remoteData;
   } catch (error) {
-    handleFirestoreError(error, OperationType.LIST, path);
+    console.warn('Feedback fetch warning:', error);
     return [];
   }
 }
@@ -54,10 +89,23 @@ export async function getAllUsers() {
   try {
     const q = query(collection(db, path), orderBy('lastSeen', 'desc'));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const remoteData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    
+    // Merge with local seekers if any
+    const rawLocal = localStorage.getItem('gitaLocalSeekers');
+    const localSeekers: any[] = rawLocal ? JSON.parse(rawLocal) : [];
+    
+    const combined = [...remoteData];
+    for (const local of localSeekers) {
+      if (!combined.some(r => r.id === local.id || (local.email && r.email === local.email))) {
+        combined.push(local);
+      }
+    }
+    return combined;
   } catch (error) {
-    handleFirestoreError(error, OperationType.LIST, path);
-    return [];
+    console.warn('Users fetch warning:', error);
+    const rawLocal = localStorage.getItem('gitaLocalSeekers');
+    return rawLocal ? JSON.parse(rawLocal) : [];
   }
 }
 
